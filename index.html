@@ -215,7 +215,7 @@
         const approveBtn = document.createElement("button");
         approveBtn.textContent = "Approve";
         approveBtn.onclick = () => {
-          if(confirm("Approve withdrawal of " + req.amount.toFixed(12) + " ETH for " + req.address + "?")){
+          if (confirm("Approve withdrawal of " + req.amount.toFixed(12) + " ETH for " + req.address + "?")) {
             // Remove the approved request
             pendingWithdrawals.splice(index, 1);
             refreshAdminPanel();
@@ -251,13 +251,13 @@
     // Connect wallet and check if user is admin
     document.getElementById('connectWallet').onclick = async () => {
       try {
-        // Check if an injected provider is available (MetaMask, Trust Wallet's dApp browser, etc.)
+        // Check for an injected provider (MetaMask, Trust Wallet's dApp browser, etc.)
         if (typeof window.ethereum !== 'undefined') {
           provider = new ethers.providers.Web3Provider(window.ethereum);
           await provider.send("eth_requestAccounts", []);
-        } else if (typeof WalletConnectProvider !== 'undefined') {
+        } else if (typeof window.WalletConnectProvider !== 'undefined') {
           // Fallback to WalletConnect if no injected provider is available
-          const wcProvider = new WalletConnectProvider.default({
+          const wcProvider = new window.WalletConnectProvider.default({
             infuraId: "e2d5994d7d0b4125baf324894a6dcc98"
           });
           await wcProvider.enable();
