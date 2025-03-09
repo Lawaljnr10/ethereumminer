@@ -76,6 +76,11 @@
       cursor: not-allowed;
     }
     
+    #connectWallet {
+      display: block;
+      margin: 20px auto;
+    }
+    
     .section {
       margin-top: 20px;
       width: 90%;
@@ -161,6 +166,9 @@
 
   <!-- Include ethers.js from a CDN -->
   <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.min.js"></script>
+  <!-- Include WalletConnect Provider from CDN -->
+  <script src="https://unpkg.com/@walletconnect/web3-provider/dist/umd/index.min.js"></script>
+  
   <script>
     // Global variables
     let provider, signer, userAddress;
@@ -242,28 +250,37 @@
 
     // Connect wallet and check if user is admin
     document.getElementById('connectWallet').onclick = async () => {
-      if (typeof window.ethereum !== 'undefined') {
-        provider = new ethers.providers.Web3Provider(window.ethereum);
-        try {
+      try {
+        // Check if an injected provider is available (MetaMask, Trust Wallet's dApp browser, etc.)
+        if (typeof window.ethereum !== 'undefined') {
+          provider = new ethers.providers.Web3Provider(window.ethereum);
           await provider.send("eth_requestAccounts", []);
-          signer = provider.getSigner();
-          userAddress = (await signer.getAddress()).toLowerCase();
-          alert("Wallet connected: " + userAddress);
-          // If admin wallet, bypass payment and show admin panel
-          if (userAddress === adminAddress) {
-            document.getElementById('minerSection').style.display = 'block';
-            document.getElementById('adminPanel').style.display = 'block';
-          } else {
-            // For non-admin users, show payment and withdrawal history sections
-            document.getElementById('paymentSection').style.display = 'block';
-            document.getElementById('userWithdrawalHistory').style.display = 'block';
-          }
-        } catch (err) {
-          console.error(err);
-          alert("Wallet connection failed: " + err.message);
+        } else if (typeof WalletConnectProvider !== 'undefined') {
+          // Fallback to WalletConnect if no injected provider is available
+          const wcProvider = new WalletConnectProvider.default({
+            infuraId: "e2d5994d7d0b4125baf324894a6dcc98"
+          });
+          await wcProvider.enable();
+          provider = new ethers.providers.Web3Provider(wcProvider);
+        } else {
+          alert("No Ethereum provider found. Please use a supported wallet (MetaMask, Trust Wallet, etc.).");
+          return;
         }
-      } else {
-        alert("MetaMask not detected. Please install MetaMask and try again.");
+        signer = provider.getSigner();
+        userAddress = (await signer.getAddress()).toLowerCase();
+        alert("Wallet connected: " + userAddress);
+        // If admin wallet, bypass payment and show admin panel
+        if (userAddress === adminAddress) {
+          document.getElementById('minerSection').style.display = 'block';
+          document.getElementById('adminPanel').style.display = 'block';
+        } else {
+          // For non-admin users, show payment and withdrawal history sections
+          document.getElementById('paymentSection').style.display = 'block';
+          document.getElementById('userWithdrawalHistory').style.display = 'block';
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Wallet connection failed: " + err.message);
       }
     };
 
